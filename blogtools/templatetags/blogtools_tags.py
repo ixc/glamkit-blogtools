@@ -245,12 +245,20 @@ class EntryTemplateTagsBase(object):
         
         
         class FutureEntries(ContextUpdatingNode):
-            def __init__(self, num, varname):
+            def __init__(self, queryset, num, varname):
+                if queryset != None:
+                    self.queryset = template.Variable(queryset)
+                else:
+                    self.queryset = None
                 self.num = num
                 self.varname = varname
             
             def get_content(self, context):
-                result = this.entry_queryset.filter(status=1,pub_date__gt=datetime.now()).order_by("pub_date")[:self.num]
+                if self.queryset != None:
+                    queryset = self.queryset.resolve(context)
+                else:
+                    queryset = this.entry_queryset
+                result = queryset.filter(status=1,pub_date__gt=datetime.now()).order_by("pub_date")[:self.num]
                 return { self.varname: result }
             
         def get_future_entries(parser, token):
@@ -258,19 +266,25 @@ class EntryTemplateTagsBase(object):
             Retrieves the next ``num`` future entries and stores them in a specified context variable.
             This returns entries with a publication date in the future, but have been made "live" already.
             eg: to be used to show users blog posts they can look forward to!
+            If ``queryset`` is not given, it uses the
+            default queryset provided in the class declaration.
             
             Syntax::
-                {% get_future_entries [num] as [varname] %}
+                {% get_future_entries [queryset] [num] as [varname] %}
             
             Example::
-                {% get_future_entries 5 as future_entries %}
+                {% get_future_entries entry_list 5 as future_entries %}
             
             """
             bits = token.contents.split()
-            if len(bits) == 4:
+            if len(bits) not in [4, 5]:
+                raise template.TemplateSyntaxError("'%s' tag takes either three or four arguments" % bits[0])
+            if len(bits) == 5:
+                if bits[3] != 'as':
+                    raise template.TemplateSyntaxError("third argument to '%s' tag must be 'as'" % bits[0])
+                return FutureEntries(bits[1], bits[2], bits[4])
+            else: # len(bits) == 4:
                 if bits[2] != 'as':
                     raise template.TemplateSyntaxError("second argument to '%s' tag must be 'as'" % bits[0])
-                return FutureEntries(bits[1], bits[3])
-            
-            raise template.TemplateSyntaxError("'%s' tag takes four arguments 'get_future_entries [num] as [varname]'" % bits[0])
+                return FutureEntries(None, bits[1], bits[3])
         get_latest_entries = given_register.tag(get_future_entries)
