@@ -22,7 +22,11 @@ class Entries(EntryFeedBase):
         return self.blog_name
 
     def items(self):
-        return self.entry_queryset[:10]
+        queryset = self.entry_queryset
+        if callable(queryset):
+            # Allow passing callable instead of a queryset. Useful when using special managers.
+            queryset = queryset()
+        return queryset[:10]
     
 
 try:
