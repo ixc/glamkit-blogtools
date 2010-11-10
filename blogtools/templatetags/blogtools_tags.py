@@ -99,7 +99,7 @@ class EntryTemplateTagsBase(object):
                     self.queryset = template.Variable(queryset)
                 else:
                     self.queryset = None
-                self.num = num
+                self.num = template.Variable(num)
                 self.varname = varname
 
             def get_content(self, context):
@@ -107,10 +107,11 @@ class EntryTemplateTagsBase(object):
                     queryset = self.queryset.resolve(context)
                 else:
                     queryset = this.entry_queryset
-                if self.num == 1:
+                num = self.num.resolve(context)
+                if num == 1:
                     result = queryset.order_by("-" + this.publication_date_field)[0]
                 else:
-                    result = list(queryset.order_by("-" + this.publication_date_field)[:self.num])
+                    result = list(queryset.order_by("-" + this.publication_date_field)[:num])
                 return { self.varname: result }
         
                 
@@ -196,7 +197,7 @@ class EntryTemplateTagsBase(object):
                     self.queryset = template.Variable(queryset)
                 else:
                     self.queryset = None
-                self.num = num
+                self.num = template.Variable(num)
                 self.varname = varname
 
             def get_content(self, context):
@@ -204,10 +205,11 @@ class EntryTemplateTagsBase(object):
                     queryset = self.queryset.resolve(context)
                 else:
                     queryset = this.entry_queryset
-                if self.num == 1:
+                num = self.num.resolve(context)
+                if num == 1:
                     result = queryset.filter(is_featured__exact=True)[0]
                 else:
-                    result = list(queryset.filter(is_featured__exact=True)[:self.num])
+                    result = list(queryset.filter(is_featured__exact=True)[:num])
                 return { self.varname: result }
         
                 
@@ -250,7 +252,7 @@ class EntryTemplateTagsBase(object):
                     self.queryset = template.Variable(queryset)
                 else:
                     self.queryset = None
-                self.num = num
+                self.num = template.Variable(num)
                 self.varname = varname
             
             def get_content(self, context):
@@ -258,7 +260,8 @@ class EntryTemplateTagsBase(object):
                     queryset = self.queryset.resolve(context)
                 else:
                     queryset = this.entry_queryset
-                result = queryset.filter(status=1,pub_date__gt=datetime.now()).order_by("pub_date")[:self.num]
+                num = self.num.resolve(context)
+                result = queryset.filter(status=1,pub_date__gt=datetime.now()).order_by("pub_date")[:num]
                 return { self.varname: result }
             
         def get_future_entries(parser, token):
