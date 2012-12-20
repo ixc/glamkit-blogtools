@@ -1,7 +1,7 @@
 {% extends "_base.html" %}
 {# in your blog, you may use modelname_archive.html, and it will override this one, or fall back to this one if it's not found #}
 
-{% block title %}{{ section_title }} {{ TITLE_SEPARATOR }} {{ block.super }}{% endblock %}
+{% block title %}{{ section_title }} :: {{ block.super }}{% endblock %}
 
 {% block extra_head %}
 	{{ block.super }}

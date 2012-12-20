@@ -1,6 +1,6 @@
 {% extends "blogtools/_archive.html" %}
 
-{% block title %}{{ day|date:"d F Y" }} {{ section_title }} Archive {{ TITLE_SEPARATOR }} {{ block.super }}{% endblock %}
+{% block title %}{{ day|date:"d F Y" }} {{ section_title }} Archive :: {{ block.super }}{% endblock %}
 
 {% block listing %}
 	<h1>{{ day|date:"d F Y" }}</h1>

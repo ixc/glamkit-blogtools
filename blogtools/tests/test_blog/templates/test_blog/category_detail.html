@@ -1,6 +1,6 @@
 {% extends "blogtools/_archive.html" %}
 
-{% block title %}{{ category }}: {{ section_title }} {{ TITLE_SEPARATOR }} {{ block.super }}{% endblock %}
+{% block title %}{{ category }}: {{ section_title }} :: {{ block.super }}{% endblock %}
 
 {% block listing %}
     <p><a href="{% url blogtools:index %}">{{ section_title }}</a></p>

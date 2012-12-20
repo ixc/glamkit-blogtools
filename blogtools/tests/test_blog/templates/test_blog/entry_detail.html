@@ -1,6 +1,6 @@
 {% extends "_base.html" %}
 {% load feincms_tags adminboost_tags %}
-{% block title %}{{ object.title }} {{ TITLE_SEPARATOR }} {{ section_title }} {{ TITLE_SEPARATOR }} {{ block.super }}{% endblock %}
+{% block title %}{{ object.title }} :: {{ section_title }} :: {{ block.super }}{% endblock %}
 
 {% block extra_head %}
 	{{ block.super }}
