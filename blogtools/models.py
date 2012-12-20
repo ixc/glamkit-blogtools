@@ -1,130 +1,85 @@
-"""
-Models for a weblog application.
-
-"""
-
-
 import datetime
-
 from django.db import models
 from django.contrib.auth.models import User
-from django.utils.translation import ugettext_lazy as _
 
+from django.template.defaultfilters import slugify
+from django.template.loader import render_to_string
+from django.utils import timezone
 
-class EntryBase(models.Model):
-    
-    # Metadata.
-    author = models.ForeignKey(User, related_name="%(class)s_authored")
+from djangosite.utils.embargo import EmbargoedContent, EmbargoedContentPublicManager
+#TODO, put this in glamkit somewhere.
+
+class CategoryModel(models.Model):
     title = models.CharField(max_length=250)
-    pub_date = models.DateTimeField(_('Date posted'), default=datetime.datetime.today)
-    slug = models.SlugField(unique_for_date='pub_date',
-                            help_text=_('Used in the URL of the entry. Must be unique for the publication date of the entry.'))
-    enable_comments = models.BooleanField(default=True)
-    
-    # The actual entry bits.
-    excerpt = models.TextField(blank=True, null=True)
-    body = models.TextField()
+    slug = models.SlugField(max_length=255, unique=True)
 
-    # Default manager
-    objects = models.Manager()
-
-    # Customisation
-    template_root_path = None
-    
     class Meta:
+        verbose_name = 'category'
+        verbose_name_plural = 'categories'
         abstract = True
-        get_latest_by = 'pub_date'
-        ordering = ['-pub_date']
-        verbose_name_plural = 'Entries' #TODO: This doesn't seem be inherited. See ticket: http://code.djangoproject.com/ticket/11369
-    
+
     def __unicode__(self):
         return self.title
-            
+
+    url_namespace = ''
+    @models.permalink
     def get_absolute_url(self):
-        return ('%s_entry_detail' % self.template_root_path, (), { 'year': self.pub_date.strftime('%Y'),
-                                               'month': self.pub_date.strftime('%m').lower(),
-                                               'day': self.pub_date.strftime('%d'),
-                                               'slug': self.slug })
-    get_absolute_url = models.permalink(get_absolute_url)
-
-    def excerpt_or_body(self):
-        return self.excerpt or self.body
-
-
-
-
-
-class FeaturableEntryMixin(models.Model):
-    is_featured = models.BooleanField(default=False)
-
-    class Meta:
-        abstract = True
-        
-        
-        
-        
-
-class StatusableEntryMixin(models.Model):
-    LIVE_STATUS = 1
-    DRAFT_STATUS = 2
-    HIDDEN_STATUS = 3
-    STATUS_CHOICES = (
-            (LIVE_STATUS, 'Live'),
-            (DRAFT_STATUS, 'Draft'),
-            (HIDDEN_STATUS, 'Hidden'),
+        # NB that URLs need exactly 2-digit months and dates, so use strftime.
+        return ('%s:category' % (self.url_namespace or self._meta.app_label),
+            [self.slug,]
         )
 
-    status = models.IntegerField(choices=STATUS_CHOICES, default=DRAFT_STATUS,
-                                 help_text=_('Only entries with "live" status will be displayed publicly.'))
+    def public_entries(self):
+        return self.entries.model.public_objects.filter(category=self)
+
+    @property
+    def section_title(self):
+        return self.entries.model.section_title
+
+class EntryModel(EmbargoedContent):
+    """
+    A generic model for blog-esque navigation.
+    """
+    title = models.CharField(max_length=250)
+    slug = models.SlugField(max_length=255, unique=True)
+    author = models.ForeignKey(User, related_name='%(app_label)s_entries', blank=True, null=True)
+    byline_date = models.DateTimeField(default=timezone.now())
+
+    objects = models.Manager()
+    public_objects = EmbargoedContentPublicManager()
+
+    section_title = "Blog"
+
+    class Meta:
+        verbose_name = "entry"
+        verbose_name_plural = "entries"
+        ordering = ['-byline_date',]
+        abstract = True
+
+    def __unicode__(self):
+        return self.title
+
+    # by default, inheriting models assume the url namespace == the app_label.
+    # If you define another namespace, then either copy it to the url_namespace
+    # attribute here, or override get_absolute_url
+    url_namespace = ''
+    @models.permalink
+    def get_absolute_url(self):
+        # NB that URLs need exactly 2-digit months and dates, so use strftime.
+        return ('%s:detail' % (self.url_namespace or self._meta.app_label),
+            [self.byline_date.year, self.slug,]
+        )
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+        # Append the pk to slugs which have a collision with a pre-existing slug.
+        if type(self).objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+            self.slug = '%s-%s' % (self.slug, slugify(self.pk))
+        super(EntryModel, self).save(*args, **kwargs)
+
+class CommentedItemModel(models.Model):
+    allow_comments = models.BooleanField(default=True)
 
     class Meta:
         abstract = True
-
-
-try:
-    from tagging.fields import TagField
-
-    class TaggableEntryMixin(models.Model):
-        tags = TagField()
-        
-        class Meta:
-            abstract = True
-            
-except ImportError:
-    pass
-
-
-
-try:
-    from template_utils.markup import formatter
-
-    class HTMLFormattableEntryMixin(models.Model):
-        """    
-        Slightly denormalised, because it uses two fields each for the
-        excerpt and the body: one for the actual text the user types in,
-        and another to store the HTML version of the Entry (e.g., as
-        generated by a text-to-HTML converter like Textile or Markdown).
-        This saves having to run the conversion each time the Entry is
-        displayed.
-        
-        Requires: django-template-utils
-        """
-                    
-        excerpt_html = models.TextField(blank=True, null=True)
-        body_html = models.TextField(blank=True)
-    
-        def save(self, *args, **kwargs):
-            if self.excerpt:
-                self.excerpt_html = formatter(self.excerpt)
-            if self.body:
-                self.body_html = formatter(self.body)
-            super(HTMLFormattableEntryMixin, self).save(*args, **kwargs)
-            
-        class Meta:
-            abstract = True
-            
-        def excerpt_or_body(self):
-            return self.excerpt_html or self.body_html
-                
-except ImportError:
-    pass

@@ -1,0 +1,10 @@
+{% load thumbnail adminboost_tags %}
+<div class='entry' style='clear:both; border-top:solid lightgrey 1px'>
+	{% if object.thumbnail_image %}
+		<img src="{% thumbnail object.image 107x68 crop quality=90 %}" style="float:left;" />
+	{% endif %}
+	<h2><a href="{{ object.get_absolute_url }}">{{ object.title }}</a>{% edit_link object %}</h2>
+	{% if object.author %}<p class="byline">by {% include 'blogtools/__author.html' %}</p>{% endif %}
+	<br/>
+	<em>{{ object.date }}</em><br/>
+</div>

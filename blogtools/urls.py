@@ -1,79 +1,98 @@
-from django.conf.urls.defaults import *
-from django.views.generic import list_detail
+from django.conf.urls.defaults import url, patterns
 
+from .views import (EntryArchive, EntryDetail,
+    EntryDay, EntryMonth, EntryYear, EntryCategory)
 
-from tagging.models import Tag
-from tagging.views import tagged_object_list
+class URLPatterns(object):
+    """
+    Make sure to set public_qs = MyEntry.public_objects.all()
+    """
 
+    def __init__(self,
+         public_qs,
+         private_qs=None,
+         category_qs=None,
+         date_field='byline_date',
+         entry_archive=EntryArchive,
+         entry_detail=EntryDetail,
+         entry_day=EntryDay,
+         entry_month=EntryMonth,
+         entry_year=EntryYear,
+         entry_category=EntryCategory,
+         feed=None,
+    ):
+        # Querysets and Config
+        self.public_qs = public_qs
+        self.private_qs = private_qs
+        self.category_qs = category_qs
+        self.date_field = date_field
+        self.feed = None
 
-class UrlPatternsBase(object):
-    url_name_root = None
-    admin_prefix = 'admin' #TODO: This is probably not right to use something like that to figure out the admin url path. Maybe use the reverse function?
-    views = None
-    feeds = None
-
-
-class EntryUrlPatternsMixin(object):
-    
-    def get_entry_url_patterns(self):
-        return self.get_archive_url_patterns() + self.get_feeds_url_patterns() + self.get_other_url_patterns()
-    
-    def get_archive_url_patterns(self):
-        return patterns('',
-                url(r'^$',
-                    self.views.archive_index,
-                    name='%s_entry_archive_index' % self.url_name_root),
-               
-                url(r'^(?P<year>\d{4})/$',
-                    self.views.archive_year,
-                    name='%s_entry_archive_year' % self.url_name_root),
-                   
-                url(r'^(?P<year>\d{4})/(?P<month>\d{2})/$',
-                    self.views.archive_month,
-                    name='%s_entry_archive_month' % self.url_name_root),
-                   
-                url(r'^(?P<year>\d{4})/(?P<month>\d{2})/(?P<day>\d{2})/$',
-                    self.views.archive_day,
-                    name='%s_entry_archive_day' % self.url_name_root),
-                   
-                url(r'^(?P<year>\d{4})/(?P<month>\d{2})/(?P<day>\d{2})/(?P<slug>[-\w]+)/$',
-                    self.views.entry_detail,
-                    name='%s_entry_detail' % self.url_name_root),
-            )
-       
-    def get_feeds_url_patterns(self):
-        urlpatterns = patterns('',)
-        if self.feeds is not None:
-            for url_pattern, url_name, feed_view in self.feeds:
-                urlpatterns += patterns('',
-                         url(url_pattern, feed_view, name='%s_%s' % (self.url_name_root, url_name)),
-                     )
-        return urlpatterns
-        
-    def get_other_url_patterns(self): #TODO: rename, and maybe split out the urls in different methods
-        return patterns('',
-                url(r'^entry_preview/(?P<entry_pk>[0-9]+)/$',
-                    self.views.entry_preview,
-                    name='%s_entry_preview' % self.url_name_root),
-            
-                url(r'^search/', self.views.search, name='%s_search' % self.url_name_root),
-            )
-    
-    
-
-class TagUrlPatternsMixin(object):
-    
-    def get_tag_urlpatterns(self):
-        return patterns('',
-           url(r'^%s/tag_list/$' % self.admin_prefix,
-		       self.views.json_tag_list,
-		       name='%s_json_tag_list' % self.url_name_root),
-        
-           url(r'^tags/$',
-               self.views.tag_list,
-               name='%s_tag_list' % self.url_name_root),
-               
-           url(r'^tags/(?P<tag>[-\w]+)/$',
-               self.views.tagged_entry_list,
-               name='%s_tag_detail' % self.url_name_root),
+        # URLs
+        self.index = url(r'^$',
+            entry_archive.as_view(
+                queryset=self.public_qs,
+                date_field=self.date_field,
+                allow_empty=True,
+            ),
+            name='index'
         )
+        self.year = url(r'^(?P<year>\d{4})/$',
+            entry_year.as_view(
+                queryset=self.public_qs,
+                date_field=self.date_field
+            ),
+            name='year'
+        )
+        self.month = url(r'^(?P<year>\d{4})/(?P<month>\d{2})/$',
+            entry_month.as_view(
+                queryset=self.public_qs,
+                date_field=self.date_field
+            ),
+            name='month'
+        )
+        self.day = url(r'^(?P<year>\d{4})/(?P<month>\d{2})/(?P<day>\d{2})/$',
+            entry_day.as_view(
+                queryset=self.public_qs,
+                date_field=self.date_field
+            ),
+            name='day'
+        )
+        self.detail = url(r'^(?P<year>\d{4})/(?P<slug>[-\w]+)/$',
+            entry_detail.as_view(
+                queryset=self.public_qs,
+                private_qs=self.private_qs
+            ),
+            name='detail'
+        )
+
+        if self.category_qs is not None and entry_category is not None:
+            self.category = url(r'^category/(?P<slug>[-\w]+)/$',
+                entry_category.as_view(
+                    queryset=self.category_qs,
+                    context_object_name='category'
+                ),
+                name='category'
+            )
+
+        if feed:
+            self.feed = url(r'^feed/atom.xml$', feed, name='feed')
+
+    @property
+    def patterns(self):
+        url_patterns = patterns('',
+            self.index,
+            self.year,
+            self.month,
+            self.day,
+            self.detail,
+        )
+        if self.category_qs is not None:
+            url_patterns += patterns('',
+                self.category
+            )
+        if self.feed is not None:
+            url_patterns += patterns('',
+                 self.feed
+            )
+        return url_patterns

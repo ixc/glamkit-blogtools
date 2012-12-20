@@ -1,0 +1,137 @@
+[
+  {
+    "pk": 2, 
+    "model": "test_blog.category", 
+    "fields": {
+      "slug": "cat-2", 
+      "title": "Category 2"
+    }
+  }, 
+  {
+    "pk": 1, 
+    "model": "test_blog.category", 
+    "fields": {
+      "slug": "cat-1", 
+      "title": "Category 1"
+    }
+  }, 
+  {
+    "pk": 6, 
+    "model": "test_blog.entrytextilechunk", 
+    "fields": {
+      "content": "The body content should become the summary, but be truncated. Locavore semiotics marfa, craft beer selvage deserunt art party consequat freegan enim kale chips mlkshk iphone VHS. Keytar echo park food truck officia, laboris locavore jean shorts VHS terry richardson viral brunch lomo pitchfork freegan test_blog. Occupy ex dolore, minim laborum butcher twee cosby sweater commodo messenger bag hoodie tumblr gastropub exercitation 8-bit. Marfa placeat nulla vice farm-to-table elit. Ut officia bushwick terry richardson umami, selvage chillwave master cleanse street art godard typewriter echo park. Williamsburg PBR ad vinyl. Commodo narwhal four loko deserunt.", 
+      "ordering": 0, 
+      "style": "one-column", 
+      "region": "main", 
+      "parent": 9
+    }
+  }, 
+  {
+    "pk": 1, 
+    "model": "auth.user", 
+    "fields": {
+      "username": "gturner", 
+      "first_name": "Greg", 
+      "last_name": "Turner", 
+      "is_active": true, 
+      "is_superuser": true, 
+      "is_staff": true, 
+      "last_login": "2012-12-18T23:59:32Z",
+      "groups": [], 
+      "user_permissions": [],
+      "password": "x",
+      "email": "greg@interaction.net.au", 
+      "date_joined": "2012-07-22T03:44:36Z"
+    }
+  },
+  {
+    "pk": 9, 
+    "model": "test_blog.entry", 
+    "fields": {
+      "category": null, 
+      "byline_date": "2012-11-19T00:00:00Z",
+      "author": 1,
+      "title": "I have no summary",
+      "is_active": true,
+      "summary": "",
+      "publication_end_date": null,
+      "publication_date": "2012-12-19T05:05:00Z",
+      "slug": "i-have-no-summary"
+    }
+  },
+  {
+    "pk": 10,
+    "model": "test_blog.entry",
+    "fields": {
+      "category": null,
+      "byline_date": "2012-12-19T04:48:13Z",
+      "author": 1, 
+      "title": "I have a summary", 
+      "is_active": true, 
+      "summary": "Here is the summary.\r\n\r\nIt's in HTML.", 
+      "publication_end_date": null, 
+      "publication_date": "2012-12-19T00:00:00Z",
+      "slug": "i-have-summary"
+    }
+  }, 
+  {
+    "pk": 11, 
+    "model": "test_blog.entry", 
+    "fields": {
+      "category": null, 
+      "byline_date": "2012-12-19T04:48:13Z", 
+      "author": 1, 
+      "title": "I am not active", 
+      "is_active": false, 
+      "summary": "You should not see me.", 
+      "publication_end_date": null, 
+      "publication_date": "2012-12-19T00:00:00Z",
+      "slug": "i-am-not-active"
+    }
+  }, 
+  {
+    "pk": 12, 
+    "model": "test_blog.entry", 
+    "fields": {
+      "category": null, 
+      "byline_date": "2012-12-19T04:48:13Z", 
+      "author": 1, 
+      "title": "I am not published yet.", 
+      "is_active": true, 
+      "summary": "You should not see me.", 
+      "publication_end_date": null, 
+      "publication_date": "2212-12-19T00:00:00Z",
+      "slug": "i-am-not-published-yet"
+    }
+  }, 
+  {
+    "pk": 13, 
+    "model": "test_blog.entry", 
+    "fields": {
+      "category": null, 
+      "byline_date": "2012-12-19T04:48:13Z", 
+      "author": 1, 
+      "title": "I have expired", 
+      "is_active": true, 
+      "summary": "You should not see me.", 
+      "publication_end_date": "2012-12-19T05:00:00Z", 
+      "publication_date": "2012-12-19T05:00:00Z", 
+      "slug": "i-have-expired"
+    }
+  }, 
+  {
+    "pk": 14, 
+    "model": "test_blog.entry", 
+    "fields": {
+      "category": 1, 
+      "byline_date": "2012-12-19T05:11:35Z", 
+      "author": 1, 
+      "title": "I have a category", 
+      "is_active": true, 
+      "summary": "", 
+      "publication_end_date": null, 
+      "publication_date": "2012-12-19T00:00:00Z",
+      "slug": "i-have-category"
+    }
+  }
+]

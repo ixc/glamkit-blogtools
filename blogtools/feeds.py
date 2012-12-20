@@ -1,49 +1,29 @@
 from django.contrib.syndication.views import Feed
-from django.core.urlresolvers import reverse
+from django.utils.feedgenerator import Atom1Feed
 from django.conf import settings
 
+class AbstractEntriesFeed(Feed):
+    feed_type = Atom1Feed
+    title = settings.SITE_NAME
+    description = "Updates to the %s blog." % settings.SITE_NAME
 
-class EntryFeedBase(Feed):
-    # Custom parameters
-    blog_name = None
-    entry_queryset = None
-    url_name_root = None
-    publication_date_field = 'pub_date'
+    subtitle = description
+
+#    def items(self):
+#        return Entry.public_objects.order_by('-byline_date')[:5]
+
+    def item_title(self, item):
+        return item.title
+
+    def item_author_name(self, item):
+        return item.author.get_full_name() or item.author
+
+#    def item_author_link(self, item):
+#        return settings.SITE_URL + item.author.get_absolute_url()
+
+#    def item_categories(self, item):
+#        if item.category is not None:
+#            return [item.category.title]
 
     def item_pubdate(self, item):
-        return getattr(item, self.publication_date_field)
-
-class Entries(EntryFeedBase):
-
-    def link(self, obj):
-        return reverse('%s_entry_archive_index' % self.url_name_root)
-
-    def title(self, obj):
-        return self.blog_name
-
-    def items(self):
-        queryset = self.entry_queryset
-        if callable(queryset):
-            # Allow passing callable instead of a queryset. Useful when using special managers.
-            queryset = queryset()
-        return queryset[:10]
-    
-
-try:
-    from tagging.models import Tag, TaggedItem
-
-    class EntriesByTag(EntryFeedBase):  #TODO: Maybe this should be a mixin that doesn't inherit from anything.
-    
-        def get_object(self, request, tag_name):
-            return Tag.objects.get(name=tag_name)
-    
-        def title(self, obj):
-            return "%s: Entries tagged with '%s'" % (self.blog_name, obj.name)
-    
-        def link(self, obj):
-            return reverse('%s_tag_detail' % self.url_name_root, args=[obj.name])
-    
-        def items(self, obj):
-            return TaggedItem.objects.get_by_model(self.entry_queryset, obj)[:10]
-except ImportError:
-    pass
+        return item.byline_date

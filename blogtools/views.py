@@ -1,173 +1,109 @@
-import datetime
+"""
+Utility functions to add a generic template to the lookup list
+and `current_app` to the context. Mix in before the template view class.
 
-from django.shortcuts import get_object_or_404
-from django.views.generic import date_based, list_detail
-from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render_to_response
-from django.template.context import RequestContext
-from django.http import HttpResponse
-from django.utils import simplejson
-from django.contrib.syndication.views import feed as django_feed
+The latter allows for {% url blogtools:bla %} to be replaced by
+ {% url myblog:bla %} in inmplementing apps.
 
-from utils import get_query
+Your URLs should do this:
+    url(r'^press/', include('press_releases.urls', app_name='blogtools',
+        namespace='press_releases')),
+    url(r'^blog/', include('blog.urls', app_name='blogtools',
+        namespace='blog')),
 
+where namespace = implementing app_label.
+"""
+from django.db.models import Count
 
+from django.views.generic import (ArchiveIndexView, DetailView,
+    DayArchiveView, MonthArchiveView, YearArchiveView)
+from django.utils.decorators import classonlymethod
+from blogtools.models import CategoryModel
 
-def prepare_queryset(view):
-    ''' Decorator for preparing the queryset before it is used by the views '''
-    def wrapper(self, *args, **kwargs):
-        if 'entry_queryset' in kwargs:
-            queryset = kwargs['entry_queryset']
-        else:
-            queryset = self.entry_queryset
-        if callable(queryset):
-            # Allow passing callable instead of a queryset. Useful when using special managers.
-            queryset = queryset()
-        kwargs['entry_queryset'] = queryset
-        return view(self, *args, **kwargs)
-    return wrapper
-    
+class LastResortTemplateMixin(object):
+    def get_template_names(self):
+        return super(LastResortTemplateMixin, self).get_template_names() +\
+               ["blogtools/%s.html" % self.template_name_suffix]
 
+class RenderInjectContextMixin(object):
 
+    def get_context_data(self, **kwargs):
+        context = super(RenderInjectContextMixin, self).get_context_data(**kwargs)
+        if not context.has_key('section_title'):
+            try:
+                context['section_title'] = \
+                self.object_list.model.section_title
+            except AttributeError:
+                context['section_title'] = \
+                self.object.section_title
 
-class BaseEntryViews(object):
-    entry_queryset = None
-    template_root_path = None
-    publication_date_field = 'pub_date'
-    slug_field = 'slug'
-    paginate_by = None
-    month_format = '%m'
-    
-    @prepare_queryset
-    def archive_index(self, request, *args, **kwargs):
-        info_dict = {
-                'queryset': kwargs.pop('entry_queryset'),
-                'template_name': '%s/entry_archive_index.html' % self.template_root_path,
-                'template_object_name': 'entry',
-                'paginate_by': self.paginate_by,
-             }
-        return list_detail.object_list(request, *args, **dict(info_dict, **kwargs))
-
-    @prepare_queryset
-    def archive_year(self, request, *args, **kwargs):
-        #TODO: Enable pagination when Django's ticket #2367 is fixed.
-        info_dict = {
-                'queryset': kwargs.pop('entry_queryset'),
-                'date_field': self.publication_date_field,
-                'template_name': '%s/entry_archive_year.html' % self.template_root_path,
-                'template_object_name': 'entry',
-            }
-        return date_based.archive_year(request, *args, **dict(info_dict, make_object_list=True, **kwargs))
-
-    @prepare_queryset
-    def archive_month(self, request, *args, **kwargs):
-        #TODO: Enable pagination when Django's ticket #2367 is fixed.
-        info_dict = {
-                'queryset': kwargs.pop('entry_queryset'),
-                'date_field': self.publication_date_field,
-                'template_name': '%s/entry_archive_month.html' % self.template_root_path,
-                'template_object_name': 'entry',
-            }
-        return date_based.archive_month(request, *args, **dict(info_dict, month_format=self.month_format, **kwargs))
-
-    @prepare_queryset
-    def archive_day(self, request, *args, **kwargs):
-        #TODO: Enable pagination when Django's ticket #2367 is fixed.
-        info_dict = {
-                'queryset': kwargs.pop('entry_queryset'),
-                'date_field': self.publication_date_field,
-                'template_name': '%s/entry_archive_day.html' % self.template_root_path,
-                'template_object_name': 'entry',
-            }
-        return date_based.archive_day(request, *args, **dict(info_dict, month_format=self.month_format, **kwargs))
-
-    @prepare_queryset
-    def entry_detail(self, request, *args, **kwargs):
-        info_dict = {
-                'queryset': kwargs.pop('entry_queryset'),
-                'date_field': self.publication_date_field,
-                'template_name': '%s/entry_detail.html' % self.template_root_path,
-                'template_object_name': 'entry',
-            }
-        return date_based.object_detail(request, *args, **dict(info_dict, month_format=self.month_format, slug_field=self.slug_field, **kwargs))
-
-    @prepare_queryset
-    def search(self, request, *args, **kwargs):
-        #TODO: enable pagination
-        query_string = ''
-        found_entries = None
-        if ('q' in request.GET) and request.GET['q'].strip():
-            query_string = request.GET['q']
-
-            entry_query = get_query(query_string, ['title', 'body',])
-
-            found_entries = kwargs['entry_queryset'].filter(entry_query)
-
-        context = {
-            'query_string': query_string,
-            'found_entries': found_entries
-        }
-        if 'extra_context' in kwargs:
-            context.update(kwargs['extra_context'] or {})
-
-        return render_to_response('%s/search_results.html' % self.template_root_path,
-                              context,
-                              context_instance=RequestContext(request))
-    
-    @prepare_queryset
-    def entry_preview(self, request, entry_pk, *args, **kwargs):
-        @staff_member_required
-        def func(request, entry_pk, *args, **kwargs):
-            context = {
-                'preview': True
-            }
-            if 'extra_context' in kwargs:
-                context.update(kwargs['extra_context'] or {})
-            return list_detail.object_detail(
-                     request,
-                     object_id=entry_pk,
-                     queryset=kwargs.pop('entry_queryset'),
-                     template_object_name='entry',
-                     template_name='%s/entry_detail.html' % self.template_root_path,
-                     extra_context=context
-                 )
-        return func(request, entry_pk, *args, **kwargs)
-
-try:
-    from tagging.models import Tag
-    from tagging.views import tagged_object_list
-
-    class TaggedEntryViewsMixin(object):
-
-        def tag_list(self, request, *args, **kwargs):
-            extra_context = {}
-            if 'extra_context' in kwargs:
-                extra_context.update(kwargs['extra_context'] or {})
-            return list_detail.object_list(
-               { 'queryset': Tag.objects.all().order_by('name'),
-                 'template_name': '%s/tag_list.html' % self.template_root_path,
-                 'template_object_name': 'tag',
-                 'extra_context': extra_context,
-                 'paginate_by': self.paginate_by, }
-            )
-
-        def tagged_entry_list(self, request, *args, **kwargs):
-            if 'entry_queryset' in kwargs:
-                queryset = kwargs['entry_queryset']
-                del kwargs['entry_queryset']
+        # inject categories context if applicable
+        try:
+            if hasattr(self, 'object') and isinstance(self.object, CategoryModel):
+                category_qs = type(self.object).objects.get_query_set()
             else:
-                queryset = self.entry_queryset
-            info_dict = {
-                'queryset_or_model': queryset,
-                'template_name': '%s/tag_detail.html' % self.template_root_path,
-                'template_object_name': 'entry',
-                'paginate_by': self.paginate_by,
-                 }
-            return tagged_object_list(request, *args, **dict(info_dict, **kwargs))
+                category_qs = self.object_list.model.category.get_query_set()
+            context['categories'] = category_qs.annotate(
+                entry_count=Count('entries')).filter(entry_count__gte=1)
+                #TODO: count only active entries
+        except AttributeError:
+            pass
 
-        def json_tag_list(self, request):
-            tags = [tag.name for tag in Tag.objects.all()]
-            json = simplejson.dumps({ 'success': True, 'tags': tags })
-            return HttpResponse(json, mimetype='text/plain')
-except ImportError:
+        return context
+
+    def render_to_response(self, context, **kwargs):
+        if not kwargs.has_key('current_app'):
+            try:
+                kwargs['current_app'] =\
+                self.object_list.model._meta.app_label
+            except AttributeError:
+                kwargs['current_app'] =\
+                self.object._meta.app_label
+        return super(RenderInjectContextMixin, self).render_to_response(context,
+                                                   **kwargs)
+
+class EntryArchive(LastResortTemplateMixin, RenderInjectContextMixin, ArchiveIndexView):
+    pass
+
+class EntryYear(LastResortTemplateMixin, RenderInjectContextMixin, YearArchiveView):
+    pass
+
+class EntryMonth(LastResortTemplateMixin, RenderInjectContextMixin, MonthArchiveView):
+    month_format = '%m'
+
+class EntryDay(LastResortTemplateMixin, RenderInjectContextMixin, DayArchiveView):
+    month_format = '%m'
+
+class EntryDetail(RenderInjectContextMixin, DetailView):
+    # Defining this is necessary to ensure that the "private_qs" keyword 
+    # argument in as_view() does not get rejected as invalid
+    private_qs = None
+    
+    @classonlymethod
+    def as_view(cls, **kwargs):
+        # We want to call the parent class's as_view() classmethod while 
+        # ensuring that it operates on EntryDetail, and not DetailView, so 
+        # that the get_queryset() method below gets used. We do this by 
+        # grabbing the unbound method using im_func, then binding it to 
+        # EntryDetail with __get__.
+        return DetailView.as_view.im_func.__get__(cls)(**kwargs)
+
+    def get_queryset(self):
+        """
+        Logged-in staff can see unpublished entries.
+        """
+        #TODO: Check for edit permissions.
+        if self.request.user.is_staff and self.private_qs is not None:
+            return self.private_qs
+        else:
+            return self.queryset
+
+    def get_context_data(self, **kwargs):
+        context = super(EntryDetail, self).get_context_data(**kwargs)
+        object = context['object']
+        if hasattr(object, 'open_graph'):
+            context['open_graph'] = object.open_graph()
+        return context
+
+class EntryCategory(RenderInjectContextMixin, DetailView):
     pass

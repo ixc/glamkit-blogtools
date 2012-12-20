@@ -1,0 +1,26 @@
+{% extends "_base.html" %}
+{% load feincms_tags adminboost_tags %}
+{% block title %}{{ object.title }} {{ TITLE_SEPARATOR }} {{ section_title }} {{ TITLE_SEPARATOR }} {{ block.super }}{% endblock %}
+
+{% block extra_head %}
+	{{ block.super }}
+	{{ object.content.media }}
+	<link href="{{ SITE_URL }}{% url blog:feed %}" type="application/atom+xml" rel="alternate" title="{{ SITE_NAME }} ATOM Feed">
+{% endblock %}
+
+{% block content_extra_classes %}blog post{% endblock %}
+
+{% block content %}
+    <p><a href="{% url blogtools:index %}">{{ section_title }}</a></p>
+    <h1>{{ object.title }}{% edit_link object %}</h1>
+    <p>
+            Posted on {{ object.byline_date|date }}
+            {% if object.author %}
+                by  {% include 'blogtools/__author.html' %}
+            {% endif %}
+            {% if object.category %} in <a href="{{ object.category.get_absolute_url }}">{{ object.category}}</a>.{% endif %}
+        </p>
+
+{% feincms_render_region object "main" request %}
+
+{% endblock content %}

@@ -1,0 +1,14 @@
+{% extends "blogtools/_archive.html" %}
+
+{% block title %}{{ category }}: {{ section_title }} {{ TITLE_SEPARATOR }} {{ block.super }}{% endblock %}
+
+{% block listing %}
+    <p><a href="{% url blogtools:index %}">{{ section_title }}</a></p>
+    <h1>{{ category }}</h1>
+
+    {% for object in category.public_entries.all %}
+        {% include "blogtools/__preview.html" %}
+		{% empty %}
+			<p>There are no posts in <em>{{ category }}</em>.</p>
+    {% endfor %}
+{% endblock listing %}

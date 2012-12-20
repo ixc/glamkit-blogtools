@@ -1,317 +1,126 @@
 import os
-from datetime import datetime
-
+from django.core.exceptions import ImproperlyConfigured
+from django.core.urlresolvers import reverse
+from django.db import models
 from django.test import TestCase
-from django.conf import settings
-from django.contrib.auth.models import User
-from django import template
-from django.template.loaders import app_directories
-from django.template import TemplateSyntaxError
-from django.test.utils import ContextList
-from django.core.management import call_command
-from django.db.models.loading import load_app
+from django.test.client import Client
+from django.test.utils import override_settings
+from django.utils.importlib import import_module
+from testtools import apploader
 
-from blogtools.tests.blug.models import BlugEntry
+"""
+These tests cause a few naive datetime warnings, because generic views don't use
+timezone-aware dates. This is fixed in
+https://code.djangoproject.com/ticket/18217 - Django 1.5.
+"""
 
+APP_NAME = 'blogtools.tests.test_blog'
 
-class TemplateTagTestCase(TestCase):
-    #TODO: Maybe it'd be good to move this class to some generic library.
-    
-    def renderTemplate(self, tstr, **context):
-        t = template.Template(tstr)
-        c = template.Context(context)
-        return (t.render(c), ContextList(c))
-
-class OverrideSettingsTestCase(TestCase):
-    #TODO: Maybe this class could be taken to a generic library.
-    
-    def setUp(self):
-        if hasattr(self, 'settings_override'):
-            for (key, value) in self.settings_override.items():
-                if hasattr(settings, key):
-                    setattr(self, '_old_%s' % key, getattr(settings, key)) # Back up the setting
-                setattr(settings, key, value) # Override the setting
-
-        # since django's r11862 templatags_modules and app_template_dirs are cached
-        # the cache is not emptied between tests
-        # clear out the cache of modules to load templatetags from so it gets refreshed
-        template.templatetags_modules = []
-        
-        # clear out the cache of app_directories to load templates from so it gets refreshed
-        app_directories.app_template_dirs = []
-        # reload the module to refresh the cache
-        reload(app_directories)
-            
-        
-
-    def tearDown(self):
-        # Restore settings
-        if hasattr(self, 'settings_override'):
-            for (key, value) in self.settings_override.items():
-                if hasattr(self, '_old_%s' % key):
-                    setattr(settings, key, getattr(self, '_old_%s' % key))
+app_template_dir = None
+try:
+    mod = import_module(APP_NAME)
+except ImportError, e:
+    raise ImproperlyConfigured('ImportError %s: %s' % (APP_NAME, e.args[0]))
+template_dir = os.path.join(os.path.dirname(mod.__file__), 'templates')
+if os.path.isdir(template_dir):
+    app_template_dir = template_dir
 
 
-
-class BlugTestsBase(OverrideSettingsTestCase):
+@override_settings(
+    TEMPLATE_DIRS = (
+        app_template_dir,
+    ) #Ignore the default _base.html
+)
+class SimpleTest(TestCase):
+    fixtures = ['blog_test_content.json']
     urls = 'blogtools.tests.urls'
-    
-    settings_override = {
-        'BLOG_NAME': 'Not another Wordpress blog',
-        'INSTALLED_APPS': list(settings.INSTALLED_APPS) + ['blogtools.tests.blug'],
-        'TEMPLATE_DIRS': (os.path.join(os.path.dirname(__file__), 'templates'),),
-    }
-    
-    def setUp(self):
-        super(BlugTestsBase, self).setUp()
-        
-        # Install test app -----------------------------------------------------
 
-        load_app('blogtools.tests.blug')
-        call_command('flush', verbosity=0, interactive=False)
-        call_command('syncdb', verbosity=0, interactive=False)
-        
-        # Create test data -----------------------------------------------------
-        
-        # Users
-        self.jon = User.objects.create_superuser('jon', 'jon@example.com', 'testpw')
-        self.bob = User.objects.create_user('bob', 'bob@example.com', 'testpw')
-        
-        # Entries
-        self.entry_cool = BlugEntry.objects.create(author=self.jon, status=1, excerpt='I won\'t spoil the content of this post', title="Supa cool title",
-                                          body="Today I did something really cool!",
-                                          slug="supa-cool-title",
-                                          pub_date='2009-12-04',
-                                          is_featured=True)
-        self.entry_cool.tags = 'cool stuff'
-        self.entry_cool.save()
-        self.entry_hype = BlugEntry.objects.create(author=self.jon, status=1, title="Another blog post",
-                                          body="I can't help but be the coolest guy wherever I go. Oh yeah, I'm so cool.",
-                                          slug="another-blog-post",
-                                          pub_date='2009-06-05',
-                                          is_featured=True)
-        self.entry_hype.tags = 'cool hype'
-        self.entry_hype.save()
-        self.entry_unpublished1 = BlugEntry.objects.create(author=self.jon, title="Can't publish this yet",
-                                          body="This post isn't cool enough, so I won't publish it",
-                                          slug="cant-publish-yet",
-                                          pub_date='2009-06-05')
-        self.entry_unpublished2 = BlugEntry.objects.create(author=self.jon, title="Can't publish this one either",
-                                          body="This post is just crap. Don't publish it!",
-                                          slug="cant-publish-either",
-                                          pub_date='2008-09-15')
-        self.entry_boring = BlugEntry.objects.create(author=self.jon, status=1, title="My life is boring",
-                                          body="Please, subscribe to my blog and be my friend. Yawn.",
-                                          slug="my-life-boring",
-                                          pub_date='2008-10-14',
-                                          is_featured=True)
-        self.entry_initial = BlugEntry.objects.create(author=self.jon, status=1, title="Welcome to our blog",
-                                          body="This is our new blog, and it's made with Django!",
-                                          slug="welcome-our-blog",
-                                          pub_date='2007-02-22')
+    def _pre_setup(self):
+        # The following line would naturally be in setUp(), except we have to
+        # install the app before its fixtures will load.
+        apploader.load_app(APP_NAME)
+        super(SimpleTest, self)._pre_setup() #This loads the fixtures
+
+    def _post_teardown(self):
+        super(SimpleTest, self)._post_teardown()
+        apploader.unload_app(APP_NAME)
+
+    def test_index(self):
+        client = Client()
+        response = client.get(reverse("test_blog:index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['object_list']), 3) # only public objects
+        self.assertNotContains(response, "You should not see me.") # only public objects
+
+        # Confirm that autogenerated summaries are truncated
+        self.assertContains(response, "The body content should become the summary, but be truncated. Locavore semiotics marfa, craft beer selvage deserunt art party consequat ...")
 
 
+    def test_feed(self):
+        client = Client()
+        response = client.get(reverse("test_blog:feed"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "You should not see me.") # only public objects
+        self.assertContains(response, "terry richardson umami") # full content, not just summary
 
-class BlugViewTests(BlugTestsBase):
-    
-    def test_archive_index(self):
-        response = self.client.get('/blog/')
-        self.assertEquals(response.status_code, 200)
-        entries = response.context['entry_list']
-        self.assertEquals(list(entries), [self.entry_cool, self.entry_hype, self.entry_boring, self.entry_initial])
-        
-    def test_search(self):
-        response = self.client.get('/blog/search/')
-        self.assertEquals(response.status_code, 200)
-        
-        # Empty searches
-        response = self.client.get('/blog/search/', {'q': ''})
-        self.assertEquals(response.status_code, 200)
-        entries = response.context['found_entries']
-        self.assertTrue(entries is None)
-        
-        # Correct search
-        response = self.client.get('/blog/search/', {'q': 'boring'})
-        entries = response.context['found_entries']
-        self.assertEquals(list(entries), [self.entry_boring])
-        
-        # Search again
-        response = self.client.get('/blog/search/', {'q': 'cool'})
-        entries = response.context['found_entries']
-        self.assertEquals(list(entries), [self.entry_cool, self.entry_hype])
-        
-        # Another search
-        response = self.client.get('/blog/search/', { 'q': '"really cool"'})
-        entries = response.context['found_entries']
-        self.assertEquals(list(entries), [self.entry_cool])
-    
-    def test_archives(self):
-        #TODO: test content returned in pages
-        
-        # Wrong day
-        response = self.client.get('/blog/2009/12/03/')
-        self.assertEquals(response.status_code, 404)
-        
-        # Wrong month
-        response = self.client.get('/blog/2009/11/')
-        self.assertEquals(response.status_code, 404)
-        
-        # Wrong year
-        response = self.client.get('/blog/2005/')
-        self.assertEquals(response.status_code, 404)
-        
-        # Correct day
-        response = self.client.get('/blog/2009/12/04/')
-        self.assertEquals(response.status_code, 200)
-        
-        # Correct month
-        response = self.client.get('/blog/2009/12/')
-        self.assertEquals(response.status_code, 200)
-        
-        # Correct year
-        response = self.client.get('/blog/2009/')
-        self.assertEquals(response.status_code, 200)
-        
-    def test_entry(self):
-        #TODO: test content returned in pages
-        
-        # Wrong date
-        response = self.client.get('/blog/2009/11/04/supa-cool-title/')
-        self.assertEquals(response.status_code, 404)
-        
-        # Wrong slug
-        response = self.client.get('/blog/2009/12/04/supa-lame-title/')
-        self.assertEquals(response.status_code, 404)
-        
-        # Correct URL
-        response = self.client.get('/blog/2009/12/04/supa-cool-title/')
-        self.assertEquals(response.status_code, 200)
-        entry = response.context['entry']
-        self.assertEquals(entry, self.entry_cool)
-        
-    def test_tagged_entries(self):
-        response = self.client.get('/blog/tags/nonexisting/')
-        self.assertEquals(response.status_code, 404)
-        
-        response = self.client.get('/blog/tags/cool/')
-        self.assertEquals(response.status_code, 200)
-        entries = response.context['entry_list']
-        self.assertEquals(entries.count(), 2)
-        self.assertTrue(self.entry_cool in entries)
-        self.assertTrue(self.entry_hype in entries)
-    
-        response = self.client.get('/blog/tags/hype/')
-        self.assertEquals(response.status_code, 200)
-        entries = response.context['entry_list']
-        self.assertEquals(entries.count(), 1)
-        self.assertTrue(self.entry_hype in entries)
-    
-    def test_preview_entry(self):
-        self.client.login(username='bob', password='testpw') # Bob is *not* a super user
-        response = self.client.get('/blog/entry_preview/%s/' % self.entry_cool.id)
-        self.assertEquals(response.status_code, 200)
-        self.assertTrue('entry' not in response.context)
-        
-        self.client.login(username='jon', password='testpw') # Jon *is* a super user
-        response = self.client.get('/blog/entry_preview/%s/' % self.entry_cool.id)
-        self.assertEquals(response.status_code, 200)
-        entry = response.context['entry']
-        self.assertEquals(entry, self.entry_cool)
-        
-        response = self.client.get('/blog/entry_previe/%s/' % 999)
-        self.assertEquals(response.status_code, 404)
+    def test_archive_year(self):
+        client = Client()
+        response = client.get(reverse("test_blog:year", args=("2012", )))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "December")
+
+    def test_archive_month(self):
+        client = Client()
+        response = client.get(reverse("test_blog:month", args=("2012", "12", )))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['object_list']), 2) # only public objects
+        self.assertNotContains(response, "You should not see me.") # only public objects
+
+        response = client.get(reverse("test_blog:month", args=("2012", "11", )))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['object_list']), 1) # only public objects
+
+        response = client.get(reverse("test_blog:month", args=("2012", "10", )))
+        self.assertEqual(response.status_code, 404)
 
 
+    def test_archive_day(self):
+        client = Client()
+        response = client.get(reverse("test_blog:day", args=("2012", "11", "19" )))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "I have no summary")
 
-class BlugTemplateTagsTests(BlugTestsBase, TemplateTagTestCase):
+        response = client.get(reverse("test_blog:day", args=("2012", "11", "18" )))
+        self.assertEqual(response.status_code, 404)
 
-    def test_archive_month_list(self):
-        # Wrong syntax ---------------------------------
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_archive_month_list %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_archive_month_list as %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_archive_month_list blah blah %}"))
-        
-        # With queryset as parameter --------------------
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_archive_month_list nonexisting_queryset as blah %}"))
-        
-        output, context = self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_archive_month_list entries as month_list %}{% for month in month_list %}{{ month|date:'F Y' }}-{% endfor %}")
-        self.assertEquals(output, "December 2009-June 2009-October 2008-February 2007-")
-        
-        # Without queryset as parameter -----------------
-        output, context = self.renderTemplate("{% load blug_tags %}{% get_archive_month_list as month_list %}{% for month in month_list %}{{ month|date:'F Y' }}-{% endfor %}")
-        self.assertEquals(output, "December 2009-June 2009-October 2008-February 2007-")
-        
-    def test_featured_entries(self):
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_featured_entries %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_featured_entries 2 %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_featured_entries 2 as %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_featured_entries 3 blah featuredentries %}"))
-        
-        # With queryset as parameter --------------------
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_featured_entries entries %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_featured_entries entries 2 %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_featured_entries entries 2 as %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_featured_entries entries 3 blah featuredentries %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_featured_entries nonexisting_queryset 2 as featuredentries %}"))
-        
-        output, context = self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_featured_entries entries 2 as featuredentries %}")
-        self.assertEquals(output, "")
-        self.assertEquals(context['featuredentries'], [self.entry_cool, self.entry_hype])
+    def test_category(self):
+        client = Client()
+        response = client.get(reverse("test_blog:category", args=("cat-1", )))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['category'].slug, 'cat-1') # only public objects
 
-        # Without queryset as parameter -----------------
-        output, context = self.renderTemplate("{% load blug_tags %}{% get_featured_entries 2 as featuredentries %}")
-        self.assertEquals(output, "")
-        self.assertEquals(context['featuredentries'], [self.entry_cool, self.entry_hype])
-        
-        
-    def test_latest_entries(self):
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_latest_entries %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_latest_entries 3 %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_latest_entries 3 as %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_latest_entries 3 blah latestentries %}"))
-        
-        # With queryset as parameter --------------------
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_latest_entries entries %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_latest_entries entries 3 %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_latest_entries entries 3 as %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_latest_entries entries 3 blah latestentries %}"))
-        self.assertRaises(TemplateSyntaxError, lambda: self.renderTemplate("{% load blug_tags %}{% get_latest_entries nonexisting_queryset 3 as latestentries %}"))
-        
-        output, context = self.renderTemplate("{% load blug_tags %}{% get_entry_queryset as entries %}{% get_latest_entries entries 3 as latestentries %}")
-        self.assertEquals(output, "")
-        self.assertEquals(context['latestentries'], [self.entry_cool, self.entry_hype, self.entry_boring])
+        response = client.get(reverse("test_blog:category", args=("cat-2", )))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "There are no posts in <em>Category 2</em>.")
 
-        # Without queryset as parameter -----------------
-        output, context = self.renderTemplate("{% load blug_tags %}{% get_latest_entries 3 as latestentries %}")
-        self.assertEquals(output, "")
-        self.assertEquals(context['latestentries'], [self.entry_cool, self.entry_hype, self.entry_boring])
-        
-class MiscTests(BlugTestsBase):
-    
-    def test_absolute_url(self):
-        entry = BlugEntry.objects.get(slug='supa-cool-title')
-        self.assertEquals(entry.get_absolute_url(), '/blog/2009/12/04/supa-cool-title/')
-        
-    def test_feeds(self):
-        response = self.client.get('/blog/feeds/latest-typo/')
-        self.assertEquals(response.status_code, 404)
-        
-        response = self.client.get('/blog/feeds/latest/')
-        self.assertEquals(response.status_code, 200)
-        self.assertEquals(response.content.count('<item>'), 4)
-        self.assertTrue(self.entry_cool.title in response.content)
-        self.assertTrue(self.entry_hype.title in response.content)
-        self.assertTrue(self.entry_boring.title in response.content)
-        self.assertTrue(self.entry_initial.title in response.content)
-        
-        response = self.client.get('/blog/feeds/tags/')
-        self.assertEquals(response.status_code, 404)
-        
-        response = self.client.get('/blog/feeds/tags/nonexisting/')
-        self.assertEquals(response.status_code, 404)
-        
-        response = self.client.get('/blog/feeds/tags/cool/')
-        self.assertEquals(response.status_code, 200)
-        self.assertEquals(response.content.count('<item>'), 2)
-        self.assertTrue(self.entry_cool.title in response.content)
-        self.assertTrue(self.entry_hype.title in response.content)
+        response = client.get(reverse("test_blog:category", args=("not-a-category", )))
+        self.assertEqual(response.status_code, 404)
+
+
+    def test_post(self):
+        client = Client()
+
+        public_entry = models.get_model("test_blog", "Entry").objects.get(slug="i-have-no-summary")
+        response = client.get(public_entry.get_absolute_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "I have no summary")
+        self.assertContains(response, "terry richardson umami") # full content, not just summary
+
+        private_entry = models.get_model("test_blog", "Entry").objects.get(slug="i-am-not-active")
+        response = client.get(private_entry.get_absolute_url())
+        self.assertEqual(response.status_code, 404)
+
+
+#   Not done yet
+#    def test_author(self):
+#        pass

@@ -2,17 +2,19 @@ from setuptools import setup, find_packages
 
 setup(
     name='glamkit-blogtools',
-    author='Julien Phalip',
-    author_email='julien@interaction.net.au',
-    version='0.5.1',
+    author='Greg Turner',
+    author_email='greg@interaction.net.au',
+    version='2.0.0',
     description='Mini framework for making Django blog apps.',
-    url='http://github.com/glamkit/glamkit-blogtools',
+    url='http://github.com/ixc/glamkit-blogtools',
     packages=find_packages(),
     package_data={
         'blogtools': [
-            'tests/templates/*.html',
-            'tests/blug/templates/blug/*.html'
-            'tests/blug/templates/admin/blug/*.html'
+            'templates/blogtools/*.html',
+            'tests/test_blog/templates/*.html',
+            'tests/test_blog/templates/blogtools/*.html',
+            'tests/test_blog/templates/test_blog/*.html',
+            'tests/test_blog/fixtures/*.json',
         ]
     },
     zip_safe=False,

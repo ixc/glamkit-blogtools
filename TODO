@@ -1,0 +1,7 @@
+* Some apps need multiple authors. Suggest using either an authorship mixin or a class factory. Or let user another field for additional authors.
+* Need basic template for detail view (overriding get_template_names in the class seemed problematic).
+* I'm not really happy with the monkeypatching going on in views.py. I think I'd rather make a mega view class that contains callables for each actual view.
+* Views for all posts by an author.
+* Examples for tagged blog posts
+* A review of navigation tools (e.g. calendars)
+* Examples of commented blog pasts
