@@ -1,10 +1,10 @@
 from django.contrib import admin
 from feincms.admin.item_editor import FEINCMS_CONTENT_FIELDSET
-from feincmstools.admin import ChunkyContentAdmin
+from feincmstools.admin import FeinCMSDocumentAdmin
 from blogtools.admin import CategoryEntryModelAdmin, CategoryModelAdmin
 from .models import Entry, Category
 
-class EntryAdmin(CategoryEntryModelAdmin, ChunkyContentAdmin):
+class EntryAdmin(CategoryEntryModelAdmin, FeinCMSDocumentAdmin):
     list_filter = list(CategoryEntryModelAdmin.list_filter) + ['category']
     fieldsets = tuple(list(CategoryEntryModelAdmin.fieldsets) + [
         ('Appearance in listings', {

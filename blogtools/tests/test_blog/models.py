@@ -1,16 +1,16 @@
 from django.db import models
-from feincmstools.base import ChunkyContent
+from feincmstools.base import FeinCMSDocument
 from blogtools.models import EntryModel, CategoryModel
-from djangosite.assets.files.chunks import ReusableFileChunk, OneOffFileChunk, OEmbedChunk
-from djangosite.assets.images.chunks import ReusableImageChunk, OneOffImageChunk
-from djangosite.pages.chunks import TextileChunk
+from djangosite.assets.files.content_types import ReusableFileContent, OneOffFileContent, OEmbedContent
+from djangosite.assets.images.content_types import ReusableImageContent, OneOffImageContent
+from djangosite.pages.chunks import TextileContent
 from djangosite.smartlinks_conf.fields import SmartLinkMarkupField
 from django.utils.translation import ugettext as _
 
 class Category(CategoryModel):
     pass
 
-class Entry(ChunkyContent, EntryModel): #, CommentedItemModel):
+class Entry(FeinCMSDocument, EntryModel): #, CommentedItemModel):
     section_title = "Blog"
     category = models.ForeignKey(Category, blank=True, null=True,
         related_name='entries')
@@ -25,9 +25,9 @@ class Entry(ChunkyContent, EntryModel): #, CommentedItemModel):
     @classmethod
     def chunks_by_region(cls, region):
         return [
-            ('Images', (ReusableImageChunk, OneOffImageChunk)),
-            ('Media', (ReusableFileChunk, OneOffFileChunk, OEmbedChunk)),
-            (None, (TextileChunk,)),
+            ('Images', (ReusableImageContent, OneOffImageContent)),
+            ('Media', (ReusableFileContent, OneOffFileContent, OEmbedContent)),
+            (None, (TextileContent,)),
         ]
 
     class Meta:

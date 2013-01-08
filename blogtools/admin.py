@@ -1,8 +1,5 @@
 from django.contrib import admin
 
-from feincms.admin.item_editor import FEINCMS_CONTENT_FIELDSET
-from feincmstools.admin import LumpyContentAdmin, ChunkyContentAdmin
-
 class CategoryModelAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('title',)}
 
