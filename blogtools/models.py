@@ -3,10 +3,9 @@ from django.db import models
 from django.contrib.auth.models import User
 
 from django.template.defaultfilters import slugify
-from django.template.loader import render_to_string
 from django.utils import timezone
 
-from djangosite.utils.embargo import EmbargoedContent, EmbargoedContentPublicManager
+from blogtools.utils.embargo import EmbargoedContent, EmbargoedContentPublicManager
 #TODO, put this in glamkit somewhere.
 
 class CategoryModel(models.Model):
