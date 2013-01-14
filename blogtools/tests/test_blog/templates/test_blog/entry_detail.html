@@ -1,5 +1,5 @@
 {% extends "_base.html" %}
-{% load feincms_tags adminboost_tags %}
+{% load adminboost_tags %}
 {% block title %}{{ object.title }} :: {{ section_title }} :: {{ block.super }}{% endblock %}
 
 {% block extra_head %}
@@ -16,11 +16,9 @@
     <p>
             Posted on {{ object.byline_date|date }}
             {% if object.author %}
-                by  {% include 'blogtools/__author.html' %}
+                by {% firstof object.author.get_full_name object.author "the editor" %}
             {% endif %}
             {% if object.category %} in <a href="{{ object.category.get_absolute_url }}">{{ object.category}}</a>.{% endif %}
         </p>
-
-{% feincms_render_region object "main" request %}
 
 {% endblock content %}

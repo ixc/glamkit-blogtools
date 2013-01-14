@@ -4,7 +4,13 @@
 		<img src="{% thumbnail object.image 107x68 crop quality=90 %}" style="float:left;" />
 	{% endif %}
 	<h2><a href="{{ object.get_absolute_url }}">{{ object.title }}</a>{% edit_link object %}</h2>
-	{% if object.author %}<p class="byline">by {% include 'blogtools/__author.html' %}</p>{% endif %}
+	{% if object.author %}<p class="byline">by {% firstof object.author.get_full_name object.author "the editor" %}</p>{% endif %}
 	<br/>
-	<em>{{ object.date }}</em><br/>
+	<p class="date"><em>{{ object.byline_date|date }}</em></p>
+
+	{% with object.get_summary as summary %}
+		{% if summary %}
+			{{ summary|linebreaks }}
+		{% endif %}
+	{% endwith %}
 </div>

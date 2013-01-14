@@ -77,6 +77,17 @@ class EntryModel(EmbargoedContent):
             self.slug = '%s-%s' % (self.slug, slugify(self.pk))
         super(EntryModel, self).save(*args, **kwargs)
 
+    def get_content(self):
+        return getattr(self, 'content', "")
+
+    def get_summary(self):
+        summary = getattr(self, 'summary')
+        if not summary:
+            return self.get_content()
+        return summary
+
+
+
 class CommentedItemModel(models.Model):
     allow_comments = models.BooleanField(default=True)
 
