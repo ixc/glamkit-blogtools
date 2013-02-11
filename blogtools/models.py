@@ -1,12 +1,18 @@
 import datetime
-from django.db import models
-from django.contrib.auth.models import User
 
+try:
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+except:
+    from django.contrib.auth.models import User
+
+from django.db import models
 from django.template.defaultfilters import slugify
 from django.utils import timezone
 
 from blogtools.utils.embargo import EmbargoedContent, EmbargoedContentPublicManager
 #TODO, put this in glamkit somewhere.
+
 
 class CategoryModel(models.Model):
     title = models.CharField(max_length=250)
@@ -34,6 +40,7 @@ class CategoryModel(models.Model):
     @property
     def section_title(self):
         return self.entries.model.section_title
+
 
 class EntryModel(EmbargoedContent):
     """
@@ -85,7 +92,6 @@ class EntryModel(EmbargoedContent):
         if not summary:
             return self.get_content()
         return summary
-
 
 
 class CommentedItemModel(models.Model):
