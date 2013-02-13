@@ -93,3 +93,11 @@ class CommentedItemModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class FeaturedItemModel(models.Model):
+    is_featured = models.BooleanField(default=False,
+        help_text="Is this a featured Item?")
+
+    class Meta:
+        abstract = True
