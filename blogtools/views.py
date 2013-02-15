@@ -2,8 +2,8 @@
 Utility functions to add a generic template to the lookup list
 and `current_app` to the context. Mix in before the template view class.
 
-The latter allows for {% url blogtools:bla %} to be replaced by
- {% url myblog:bla %} in inmplementing apps.
+The latter allows for {% url "blogtools:bla" %} to be replaced by
+ {% url "myblog:bla" %} in implementing apps.
 
 Your URLs should do this:
     url(r'^press/', include('press_releases.urls', app_name='blogtools',

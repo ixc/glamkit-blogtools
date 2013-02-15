@@ -1,17 +1,18 @@
 {% extends "_base.html" %}
+{% load url from future %}
 {% load adminboost_tags %}
 {% block title %}{{ object.title }} :: {{ section_title }} :: {{ block.super }}{% endblock %}
 
 {% block extra_head %}
 	{{ block.super }}
 	{{ object.content.media }}
-	<link href="{{ SITE_URL }}{% url blog:feed %}" type="application/atom+xml" rel="alternate" title="{{ SITE_NAME }} ATOM Feed">
+	<link href="{{ SITE_URL }}{% url "blog:feed" %}" type="application/atom+xml" rel="alternate" title="{{ SITE_NAME }} ATOM Feed">
 {% endblock %}
 
 {% block content_extra_classes %}blog post{% endblock %}
 
 {% block content %}
-    <p><a href="{% url blogtools:index %}">{{ section_title }}</a></p>
+    <p><a href="{% url "blogtools:index" %}">{{ section_title }}</a></p>
     <h1>{{ object.title }}{% edit_link object %}</h1>
     <p>
             Posted on {{ object.byline_date|date }}

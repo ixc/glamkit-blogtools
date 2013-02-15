@@ -1,4 +1,5 @@
 {% extends "blogtools/_archive.html" %}
+{% load url from future %}
 
 {% block title %}{{year}} {{ section_title }} Archive :: {{ block.super }}{% endblock %}
 
@@ -6,7 +7,7 @@
 	<h1>{{ year }}</h1>
 	<ul>
 		{% for date in date_list %}
-			<li><a href="{% url blogtools:month year date|date:"m" %}">{{ date|date:"F" }}</a></li>
+			<li><a href="{% url "blogtools:month" year date|date:"m" %}">{{ date|date:"F" }}</a></li>
 		{% endfor %}
 	</ul>
 {% endblock listing %}

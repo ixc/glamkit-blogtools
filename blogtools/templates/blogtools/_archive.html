@@ -1,11 +1,12 @@
 {% extends "_base.html" %}
+{% load url from future %}
 {# in your blog, you may use modelname_archive.html, and it will override this one, or fall back to this one if it's not found #}
 
 {% block title %}{{ section_title }} :: {{ block.super }}{% endblock %}
 
 {% block extra_head %}
 	{{ block.super }}
-	<link href="{{ SITE_URL }}{% url blog:feed %}" type="application/atom+xml" rel="alternate" title="{{ SITE_NAME }} ATOM Feed">
+	<link href="{{ SITE_URL }}{% url "blog:feed" %}" type="application/atom+xml" rel="alternate" title="{{ SITE_NAME }} ATOM Feed">
 {% endblock %}
 
 {% block content %}
@@ -30,7 +31,7 @@
 		<h2>Archives:</h2>
 		<ul>
 			{% for date in date_list %}
-				<li><a href="{% url blogtools:year date.year %}">{{ date.year }}</a></li>
+				<li><a href="{% url "blogtools:year" date.year %}">{{ date.year }}</a></li>
 			{% endfor %}
 		</ul>
 	{% endblock %}
