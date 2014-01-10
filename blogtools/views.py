@@ -78,7 +78,16 @@ class EntryDetail(RenderInjectContextMixin, DetailView):
     # Defining this is necessary to ensure that the "private_qs" keyword 
     # argument in as_view() does not get rejected as invalid
     private_qs = None
-    
+
+    # To set the used template from the model provide an attribute named 'template_name'
+    # pointing to the location of the template
+    # e.g. template_name = 'blog/template.html'
+    @property
+    def template_name(self):
+        if hasattr(self.get_object(), 'template_name'):
+            return self.get_object().template_name
+        return None
+
     @classonlymethod
     def as_view(cls, **kwargs):
         # We want to call the parent class's as_view() classmethod while 
