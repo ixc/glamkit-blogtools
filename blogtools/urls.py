@@ -1,4 +1,7 @@
-from django.conf.urls.defaults import url, patterns
+try:
+    from django.conf.urls.defaults import url, patterns
+except ImportError:
+    from django.conf.urls import patterns, url
 
 from .views import (EntryArchive, EntryDetail,
     EntryDay, EntryMonth, EntryYear, EntryCategory)
