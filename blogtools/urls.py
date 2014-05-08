@@ -16,7 +16,7 @@ class URLPatterns(object):
 
     def entry_archive_wrapper(self, request, *args, **kwargs):
         v = EntryArchive.as_view(
-            queryset = self.public_qs(),
+            queryset = self.public_qs,
             date_field = self.date_field,
             allow_empty = True,
         )
