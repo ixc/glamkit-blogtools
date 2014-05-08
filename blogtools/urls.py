@@ -11,6 +11,19 @@ class URLPatterns(object):
     Make sure to set public_qs = MyEntry.public_objects.all()
     """
 
+    # wrapper used to re-run the entry archive index queryset every time
+    # rather than once per django process execution
+
+    def entry_archive_wrapper(self, request, *args, **kwargs):
+        v = EntryArchive.as_view(
+            queryset = self.public_qs(),
+            date_field = self.date_field,
+            allow_empty = True,
+        )
+
+        return v(request)
+
+
     def __init__(self,
          public_qs,
          private_qs=None,
@@ -33,11 +46,7 @@ class URLPatterns(object):
 
         # URLs
         self.index = url(r'^$',
-            entry_archive.as_view(
-                queryset=self.public_qs,
-                date_field=self.date_field,
-                allow_empty=True,
-            ),
+            self.entry_archive_wrapper,
             name='index'
         )
         self.year = url(r'^(?P<year>\d{4})/$',
