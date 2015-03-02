@@ -40,7 +40,7 @@ class EmbargoedContent(models.Model):
     to the manager that is used for the public site.
     """
     is_active = models.BooleanField(_('is active'),
-        default=True, blank=True,
+        default=False, blank=True,
         help_text=_("Tick to make live on site (see also the publication "
             "date). Note that staff (like yourself) are allowed to "
             "preview inactive content whereas other users and the general "
