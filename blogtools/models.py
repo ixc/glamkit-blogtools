@@ -46,7 +46,7 @@ class EntryModel(EmbargoedContent):
     title = models.CharField(max_length=250)
     slug = models.SlugField(max_length=255, unique=True)
     author = models.ForeignKey(user_model, related_name='%(app_label)s_entries', blank=True, null=True)
-    byline_date = models.DateTimeField(default=timezone.now())
+    byline_date = models.DateTimeField(default=timezone.now)
 
     objects = models.Manager()
     public_objects = EmbargoedContentPublicManager()
