@@ -14,6 +14,7 @@ class URLPatterns(object):
     def __init__(self,
          public_qs,
          private_qs=None,
+         detail_qs=None,
          category_qs=None,
          date_field='byline_date',
          entry_archive=EntryArchive,
@@ -27,6 +28,7 @@ class URLPatterns(object):
         # Querysets and Config
         self.public_qs = public_qs
         self.private_qs = private_qs
+        self.detail_qs = detail_qs
         self.category_qs = category_qs
         self.date_field = date_field
         self.feed = None
@@ -63,7 +65,7 @@ class URLPatterns(object):
         )
         self.detail = url(r'^(?P<year>\d{4})/(?P<slug>[-\w]+)/$',
             entry_detail.as_view(
-                queryset=self.public_qs,
+                queryset=self.detail_qs or self.public_qs,
                 private_qs=self.private_qs
             ),
             name='detail'

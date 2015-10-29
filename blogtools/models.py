@@ -5,7 +5,7 @@ from django.db import models
 from django.template.defaultfilters import slugify
 from django.utils import timezone
 
-from blogtools.utils.embargo import EmbargoedContent, EmbargoedContentPublicManager
+from blogtools.utils.embargo import EmbargoedContent, EmbargoedContentPublicManager, EmbargoedContentPrivateManager
 #TODO, put this in glamkit somewhere.
 
 user_model = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
@@ -50,6 +50,7 @@ class EntryModel(EmbargoedContent):
 
     objects = models.Manager()
     public_objects = EmbargoedContentPublicManager()
+    private_objects = EmbargoedContentPrivateManager()
 
     section_title = "Blog"
 
