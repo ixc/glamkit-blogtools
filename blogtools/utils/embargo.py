@@ -65,7 +65,8 @@ class EmbargoedContent(models.Model):
         _('is private'),
         default=False,
         help_text='''
-            Private content can be viewed at its direct url, but it will not appear in lists.
+            Private content can be viewed at its direct url, but it will not appear in lists
+            until its embargo has passed.
         '''
     )
     publication_date = models.DateTimeField(_('publication date'), default=granular_time)
