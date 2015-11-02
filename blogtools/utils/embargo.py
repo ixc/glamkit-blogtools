@@ -28,17 +28,24 @@ def granular_time(t=None):
     return smart_datetime(t.year, t.month, t.day, t.hour, (t.minute // 5) * 5, tzinfo=t.tzinfo)
 
 
+def embargo_q_filter():
+    return (
+        Q(is_active=True) & Q(publication_date__lte=granular_time) &
+        (Q(publication_end_date__isnull=True) | Q(publication_end_date__gt=granular_time))
+    )
+
+
 class EmbargoedContentPublicManager(models.Manager):
     def get_query_set(self):
-        return super(EmbargoedContentPublicManager, self).get_query_set().filter(
-            Q(is_active=True) & Q(publication_date__lte=granular_time) &
-            (Q(publication_end_date__isnull=True) | Q(publication_end_date__gt=granular_time))
-        )
+        q_filter = embargo_q_filter()
+        return super(EmbargoedContentPublicManager, self).get_query_set().filter(q_filter)
 
 
 class EmbargoedContentPrivateManager(models.Manager):
     def get_query_set(self):
+        q_filter = embargo_q_filter()
         return super(EmbargoedContentPrivateManager, self).get_query_set().filter(
+            q_filter |
             Q(is_active=True) & Q(is_private=True)
         )
 
