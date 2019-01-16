@@ -28,8 +28,8 @@ def granular_time(t=None):
 class EmbargoedContentPublicManager(models.Manager):
     def get_query_set(self):
         return super(EmbargoedContentPublicManager, self).get_query_set().filter(
-            Q(is_active=True) & Q(publication_date__lte=granular_time) &
-            (Q(publication_end_date__isnull=True) | Q(publication_end_date__gt=granular_time))
+            Q(is_active=True) & Q(publication_date__lte=granular_time()) &
+            (Q(publication_end_date__isnull=True) | Q(publication_end_date__gt=granular_time()))
         )
 
 class EmbargoedContent(models.Model):
